@@ -79,10 +79,10 @@ contract AMM is AccessControl{
 		}
 		
 		// Transfer tokens from user to contract (sell side)
-		require(ERC20(sellToken).transferFrom(msg.sender, address(this), sellAmount), "Transfer failed");
+		ERC20(sellToken).transferFrom(msg.sender, address(this), sellAmount);
 		
 		// Transfer tokens from contract to user (buy side)
-		require(ERC20(buyToken).transfer(msg.sender, swapAmt), "Transfer failed");
+		ERC20(buyToken).transfer(msg.sender, swapAmt);
 		
 		// Emit swap event
 		emit Swap(sellToken, buyToken, sellAmount, swapAmt);
@@ -100,12 +100,12 @@ contract AMM is AccessControl{
 		
 		// Transfer tokenA from sender to contract if amtA > 0
 		if (amtA > 0) {
-			require(ERC20(tokenA).transferFrom(msg.sender, address(this), amtA), "Transfer A failed");
+			ERC20(tokenA).transferFrom(msg.sender, address(this), amtA);
 		}
 		
 		// Transfer tokenB from sender to contract if amtB > 0
 		if (amtB > 0) {
-			require(ERC20(tokenB).transferFrom(msg.sender, address(this), amtB), "Transfer B failed");
+			ERC20(tokenB).transferFrom(msg.sender, address(this), amtB);
 		}
 		
 		// Grant LP_ROLE to the liquidity provider (first time)
