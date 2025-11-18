@@ -2,7 +2,7 @@
 pragma solidity ^0.8.17;
 
 import "@openzeppelin/contracts/access/AccessControl.sol"; //This allows role-based access control through _grantRole() and the modifier onlyRole
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol"; //This contract needs to interact with ERC20 tokens
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol"; //This contract needs to interact with ERC20 tokens
 
 contract AMM is AccessControl{
     bytes32 public constant LP_ROLE = keccak256("LP_ROLE");
@@ -57,8 +57,8 @@ contract AMM is AccessControl{
 		uint256 swapAmt;
 
 		// Get current balances
-		qtyA = ERC20(tokenA).balanceOf(address(this));
-		qtyB = ERC20(tokenB).balanceOf(address(this));
+		qtyA = IERC20(tokenA).balanceOf(address(this));
+		qtyB = IERC20(tokenB).balanceOf(address(this));
 		
 		// Apply fee to the sell amount (fee is in basis points, e.g., 3 bps = 0.03%)
 		uint256 sellAmountAfterFee = sellAmount * (10000 - feebps) / 10000;
@@ -79,15 +79,15 @@ contract AMM is AccessControl{
 		}
 		
 		// Transfer tokens from user to contract (sell side)
-		ERC20(sellToken).transferFrom(msg.sender, address(this), sellAmount);
+		IERC20(sellToken).transferFrom(msg.sender, address(this), sellAmount);
 		
 		// Transfer tokens from contract to user (buy side)
-		ERC20(buyToken).transfer(msg.sender, swapAmt);
+		IERC20(buyToken).transfer(msg.sender, swapAmt);
 		
 		// Emit swap event
 		emit Swap(sellToken, buyToken, sellAmount, swapAmt);
 
-		uint256 new_invariant = ERC20(tokenA).balanceOf(address(this))*ERC20(tokenB).balanceOf(address(this));
+		uint256 new_invariant = IERC20(tokenA).balanceOf(address(this))*IERC20(tokenB).balanceOf(address(this));
 		require( new_invariant >= invariant, 'Bad trade' );
 		invariant = new_invariant;
 	}
@@ -100,21 +100,16 @@ contract AMM is AccessControl{
 		
 		// Transfer tokenA from sender to contract if amtA > 0
 		if (amtA > 0) {
-			ERC20(tokenA).transferFrom(msg.sender, address(this), amtA);
+			IERC20(tokenA).transferFrom(msg.sender, address(this), amtA);
 		}
 		
 		// Transfer tokenB from sender to contract if amtB > 0
 		if (amtB > 0) {
-			ERC20(tokenB).transferFrom(msg.sender, address(this), amtB);
-		}
-		
-		// Grant LP_ROLE to the liquidity provider (first time)
-		if (!hasRole(LP_ROLE, msg.sender)) {
-			_grantRole(LP_ROLE, msg.sender);
+			IERC20(tokenB).transferFrom(msg.sender, address(this), amtB);
 		}
 		
 		// Update invariant (product of balances)
-		invariant = ERC20(tokenA).balanceOf(address(this)) * ERC20(tokenB).balanceOf(address(this));
+		invariant = IERC20(tokenA).balanceOf(address(this)) * IERC20(tokenB).balanceOf(address(this));
 		
 		emit LiquidityProvision( msg.sender, amtA, amtB );
 	}
@@ -127,12 +122,12 @@ contract AMM is AccessControl{
 		require( amtA > 0 || amtB > 0, 'Cannot withdraw 0' );
 		require( recipient != address(0), 'Cannot withdraw to 0 address' );
 		if( amtA > 0 ) {
-			ERC20(tokenA).transfer(recipient,amtA);
+			IERC20(tokenA).transfer(recipient,amtA);
 		}
 		if( amtB > 0 ) {
-			ERC20(tokenB).transfer(recipient,amtB);
+			IERC20(tokenB).transfer(recipient,amtB);
 		}
-		invariant = ERC20(tokenA).balanceOf(address(this))*ERC20(tokenB).balanceOf(address(this));
+		invariant = IERC20(tokenA).balanceOf(address(this))*IERC20(tokenB).balanceOf(address(this));
 		emit Withdrawal( msg.sender, recipient, amtA, amtB );
 	}
 
