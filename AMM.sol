@@ -56,7 +56,36 @@ contract AMM is AccessControl{
 		uint256 qtyB;
 		uint256 swapAmt;
 
-		//YOUR CODE HERE 
+		// Get current balances
+		qtyA = ERC20(tokenA).balanceOf(address(this));
+		qtyB = ERC20(tokenB).balanceOf(address(this));
+		
+		// Apply fee to the sell amount (fee is in basis points, e.g., 3 bps = 0.03%)
+		uint256 sellAmountAfterFee = sellAmount * (10000 - feebps) / 10000;
+		
+		// Determine which token is being sold and calculate swap amount using AMM formula
+		// Formula: swapAmt = qtyOut - (invariant / (qtyIn + sellAmountAfterFee))
+		address buyToken;
+		if (sellToken == tokenA) {
+			// Selling A, buying B
+			// New balance of A = qtyA + sellAmountAfterFee
+			// invariant = qtyA * qtyB, so new qtyB = invariant / (qtyA + sellAmountAfterFee)
+			swapAmt = qtyB - (invariant / (qtyA + sellAmountAfterFee));
+			buyToken = tokenB;
+		} else {
+			// Selling B, buying A
+			swapAmt = qtyA - (invariant / (qtyB + sellAmountAfterFee));
+			buyToken = tokenA;
+		}
+		
+		// Transfer tokens from user to contract (sell side)
+		require(ERC20(sellToken).transferFrom(msg.sender, address(this), sellAmount), "Transfer failed");
+		
+		// Transfer tokens from contract to user (buy side)
+		require(ERC20(buyToken).transfer(msg.sender, swapAmt), "Transfer failed");
+		
+		// Emit swap event
+		emit Swap(sellToken, buyToken, sellAmount, swapAmt);
 
 		uint256 new_invariant = ERC20(tokenA).balanceOf(address(this))*ERC20(tokenB).balanceOf(address(this));
 		require( new_invariant >= invariant, 'Bad trade' );
@@ -68,7 +97,25 @@ contract AMM is AccessControl{
 	*/
 	function provideLiquidity( uint256 amtA, uint256 amtB ) public {
 		require( amtA > 0 || amtB > 0, 'Cannot provide 0 liquidity' );
-		//YOUR CODE HERE
+		
+		// Transfer tokenA from sender to contract if amtA > 0
+		if (amtA > 0) {
+			require(ERC20(tokenA).transferFrom(msg.sender, address(this), amtA), "Transfer A failed");
+		}
+		
+		// Transfer tokenB from sender to contract if amtB > 0
+		if (amtB > 0) {
+			require(ERC20(tokenB).transferFrom(msg.sender, address(this), amtB), "Transfer B failed");
+		}
+		
+		// Grant LP_ROLE to the liquidity provider (first time)
+		if (!hasRole(LP_ROLE, msg.sender)) {
+			_grantRole(LP_ROLE, msg.sender);
+		}
+		
+		// Update invariant (product of balances)
+		invariant = ERC20(tokenA).balanceOf(address(this)) * ERC20(tokenB).balanceOf(address(this));
+		
 		emit LiquidityProvision( msg.sender, amtA, amtB );
 	}
 
